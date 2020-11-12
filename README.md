@@ -8,7 +8,7 @@
 ## prepareIMG
     This task prepare images before using:
         - convert to format: webp
-        - minifate them 
+        - minify them 
         - copy to the dist folder
  
 ## prepareJS
@@ -32,4 +32,4 @@
     This task consist of all previus tasks and call them one by one to create folder "dist"
 
 ## wathc 
-    This task is looking for changes in files in the folder "src"
+    This task is looking for changed files in the folder "src"
