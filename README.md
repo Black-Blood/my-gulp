@@ -153,7 +153,7 @@ console.log(hello)
 ```
 
 Result:
-JS: `./src/js/script.js`
+JS: `./dist/js/script.js`
 ```javascript
 let hello;
 hello = "Hello World!";
