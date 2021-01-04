@@ -56,8 +56,6 @@ Main **HTML** document: `(./src/index.html)`:
 
     <img src="photo.jpg" alt="">
 </body>
-
-</html>
 ```
 The result: `(./dist/index.html)`:
 ```html
