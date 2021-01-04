@@ -1,0 +1,9 @@
+//! Do not delete this mixin! It is used for connecting fonts to the css
+@mixin font($fontName, $fontFileName, $fontWeigth, $fontStyle) {
+    @font-face {
+        font-family: $fontName;
+        font-weight: $fontWeigth;
+        font-style: $fontStyle;
+        src: url("../fonts/" + $fontFileName);
+    }
+}

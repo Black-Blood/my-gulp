@@ -15,19 +15,17 @@ const Gulpttf2woff2 = require("gulp-ttf2woff2")
 const Delete = require("del")
 const BrowserSynchronization = require("browser-sync").create()
 
-const projectFolder = __dirname + "/dist/"
-const sourceFolder = __dirname + "/src/"
+const projectFolder = "./dist/"
+const sourceFolder = "./src/"
 
-const options = {
-  filesFormat: {
-    html: ".html",
-    css: ".css",
-    scss: ".scss",
-    ts: ".ts",
-    js: ".js",
-    img: ".{jpg,png,svg,gif,ico,webp}",
-    fonts: ".{otf,ttf,woff,woff2}",
-  }
+const filesFormat = {
+  html: ".html",
+  css: ".css",
+  scss: ".scss",
+  ts: ".ts",
+  js: ".js",
+  img: ".{jpg,jpeg,tif,tiff,png,svg,gif,ico,webp}",
+  fonts: ".{otf,ttf,woff,woff2}",
 }
 
 const path = {
@@ -46,21 +44,38 @@ const path = {
     fonts: sourceFolder + "fonts/"
   },
   watch: {
-    html: sourceFolder + "/*" + options.filesFormat.html,
-    scss: sourceFolder + "scss/style" + options.filesFormat.scss,
-    ts: sourceFolder + "ts/**/*" + options.filesFormat.ts,
-    img: sourceFolder + "img/**/*" + options.filesFormat.img,
+    html: sourceFolder + "**/*" + filesFormat.html,
+    scss: [sourceFolder + "scss/**/*" + filesFormat.scss, "!" + sourceFolder + "scss/fonts" + filesFormat.scss],
+    ts: sourceFolder + "ts/**/*" + filesFormat.ts,
+    img: sourceFolder + "img/**/*" + filesFormat.img,
+    fonts: sourceFolder + "fonts/**/*" + filesFormat.fonts,
   }
 }
 
-//! Шрифти
+let isBrowserLoaded = false
+function loadBrowser(cb) {
+  if (isBrowserLoaded == false) {
+    isBrowserLoaded = true
+    BrowserSynchronization.init({
+      server: {
+        baseDir: projectFolder
+      },
+      port: 3000,
+      notify: false
+    })
+  }
+
+  BrowserSynchronization.reload()
+  cb()
+}
+
 function getFontParams(fontFileName) {
   let italic = "normal"
   let weight = 400
 
   if (fontFileName.toLowerCase().includes("italic")) {
     italic = "italic"
-    fontFileName = fontFileName.replace(/italic/g, "")
+    fontFileName = fontFileName.replace(/italic/i, "")
   }
 
   let fontWeaightArray = [
@@ -86,11 +101,7 @@ function getFontParams(fontFileName) {
   }
 
   fontFileName = fontFileName.replace(".woff2", "")
-
-  let lastChar = fontFileName.slice(-1)
-  if (/^[^a-zA-Z]$/g.test(lastChar)) {
-    fontFileName = fontFileName.slice(0, -1)
-  }
+  fontFileName = fontFileName.replace(/-*/g, "")
 
   return {
     italic: italic,
@@ -99,28 +110,33 @@ function getFontParams(fontFileName) {
   }
 }
 
-function prepareFONTS() {
-  return Gulp.src(path.src.fonts + "*" + options.filesFormat.fonts)
-    .pipe(GulpFonter({
-      formats: ['ttf']
-    }))
-    .pipe(Gulpttf2woff2())
-    .pipe(GulpRename(function (path) {
-      path.dirname = "./fonts"
-      path.basename = path.basename.replace("fonts\\", "")
-    }))
-    .pipe(Gulp.dest(path.build.html))
-    .pipe(BrowserSynchronization.stream())
+function cleanFolder() {
+  return Delete(projectFolder)
 }
 
-//! Картинки
+function initProject(cb) {
+  fs.mkdirSync(__dirname + "/src/ts")
+  fs.mkdirSync(__dirname + "/src/fonts")
+  fs.mkdirSync(__dirname + "/src/img")
+  fs.mkdirSync(__dirname + "/src/parts")
+  cb()
+}
+
+function observeFiles() {
+  Gulp.watch(path.watch.html, Gulp.series(prepareHTML, loadBrowser))
+  Gulp.watch(path.watch.scss, Gulp.series(prepareCSS, loadBrowser))
+  Gulp.watch(path.watch.ts, Gulp.series(prepareJS, loadBrowser))
+  Gulp.watch(path.watch.img, Gulp.series(prepareIMG, loadBrowser))
+  Gulp.watch(path.watch.fonts, Gulp.series(prepareFONTS, prepareCSS, loadBrowser))
+}
+
 function prepareIMG() {
   return Gulp.src(path.watch.img)
     .pipe(GulpWebp({
       quality: 70,
     }))
     .pipe(Gulp.dest(path.build.img))
-    .pipe(Gulp.src(path.src.img))
+    .pipe(Gulp.src(path.watch.img))
     .pipe(GulpImageOptimization([
       GulpImageOptimization.gifsicle(),
       GulpImageOptimization.mozjpeg({ quality: 75, progressive: true }),
@@ -132,10 +148,21 @@ function prepareIMG() {
       })
     ]))
     .pipe(Gulp.dest(path.build.img))
-    .pipe(BrowserSynchronization.stream())
 }
 
-//! JS
+function prepareFONTS() {
+  return Gulp.src(path.src.fonts + "*" + filesFormat.fonts)
+    .pipe(GulpFonter({
+      formats: ['ttf']
+    }))
+    .pipe(Gulpttf2woff2())
+    .pipe(GulpRename(function (path) {
+      path.dirname = "./fonts"
+      path.basename = path.basename.replace("fonts\\", "")
+    }))
+    .pipe(Gulp.dest(path.build.html))
+}
+
 function prepareJS() {
   return Gulp.src(path.watch.ts)
     .pipe(GulpTypeScript.createProject({
@@ -143,32 +170,30 @@ function prepareJS() {
     })())
     .js
     .pipe(Gulp.dest(path.build.js))
-    .pipe(BrowserSynchronization.stream())
 }
 
-
-//! CSS
 function prepareCSS() {
   // підключаємо шрифти
   let fontFileContent = ``
-  let listOfFonts = fs.readdirSync(path.build.fonts)
 
-  if (listOfFonts.length !== 0) {
-    listOfFonts.forEach(item => {
-      if (item) {
-        let fileName = item
-        let fontParams = getFontParams(fileName)
+  try {
+    let listOfFonts = fs.readdirSync(path.build.fonts)
 
-        console.log(fontParams);
+    if (listOfFonts.length !== 0) {
+      listOfFonts.forEach(item => {
+        if (item) {
+          let fileName = item
+          let fontParams = getFontParams(fileName)
 
-        fontFileContent += `@include font("${fontParams.fontName}", "${fileName}", ${fontParams.weight}, "${fontParams.italic}");\n`
-      }
-    })
-  }
+          fontFileContent += `@include font("${fontParams.fontName}", "${fileName}", ${fontParams.weight}, "${fontParams.italic}");\n`
+        }
+      })
 
-  fs.writeFileSync(path.src.scss + "fonts.scss", fontFileContent)
+      fs.writeFileSync(path.src.scss + "/fonts.scss", fontFileContent)
+    }
+  } catch (error) { }
 
-  return Gulp.src(path.watch.scss)
+  return Gulp.src(path.src.scss + "style.scss")
     .pipe(GulpSASS({ outputStyle: "expanded" }))
     .pipe(GulpAutoprefixer({ cascade: true }))
     .pipe(GulpGroupMediaQueries())
@@ -176,49 +201,25 @@ function prepareCSS() {
     .pipe(GulpCleanCSS())
     .pipe(GulpRename({ extname: ".min.css" }))
     .pipe(Gulp.dest(path.build.css))
-    .pipe(BrowserSynchronization.stream())
 }
 
-//! HTML
 function prepareHTML() {
-  return Gulp.src(path.src.html)
+  return Gulp.src([path.src.html + "/**/*" + filesFormat.html, "!" + path.src.html + "/**/_*" + filesFormat.html])
     .pipe(GulpFilesInclude({ prefix: "@@" }))
     .pipe(GulpWebpHTML())
     .pipe(Gulp.dest(path.build.html))
-    .pipe(BrowserSynchronization.stream())
 }
 
-function synchronization() {
-  BrowserSynchronization.init({
-    server: {
-      baseDir: "./" + projectFolder + "/"
-    },
-    port: 3000,
-    notify: false
-  })
-}
+let build = Gulp.series(cleanFolder, Gulp.parallel(prepareFONTS, prepareIMG, prepareJS), prepareCSS, prepareHTML)
+let watch = Gulp.series(build, loadBrowser, observeFiles)
 
-function observeFiles() {
-  Gulp.watch([path.watch.html], prepareHTML)
-  Gulp.watch([path.watch.scss], prepareCSS)
-  Gulp.watch([path.watch.ts], prepareJS)
-  Gulp.watch([path.watch.img], prepareIMG)
-}
-
-function cleanFolder() {
-  return Delete(projectFolder)
-}
-
-
-let build = Gulp.series(cleanFolder, prepareFONTS, prepareIMG, prepareJS, prepareCSS, prepareHTML)
-let watch = Gulp.series(build, Gulp.parallel(synchronization, observeFiles))
-
-exports.prepareHTML = prepareHTML
-exports.prepareCSS = prepareCSS
-exports.prepareJS = prepareJS
-exports.prepareIMG = prepareIMG
 exports.prepareFONTS = prepareFONTS
+exports.prepareIMG = prepareIMG
+exports.prepareJS = prepareJS
+exports.prepareCSS = prepareCSS
+exports.prepareHTML = prepareHTML
 
+exports.initProject = initProject
 exports.build = build
 exports.watch = watch
 

@@ -1,1 +1,0 @@
-This folder consist of files with format .ts

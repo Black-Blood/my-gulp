@@ -1,1 +1,0 @@
-This folder consist of files with format .png .jpg .gif .webp .svg .ico
