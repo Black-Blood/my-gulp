@@ -51,15 +51,6 @@ Part of the **HTML** document: `(./src/parts/_header.html)`:
 ```
 Main **HTML** document: `(./src/index.html)`:
 ```html
-<!DOCTYPE html>
-<html lang="en">
-
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Document</title>
-</head>
-
 <body>
     @@include('./parts/_header.html')
 
@@ -70,15 +61,6 @@ Main **HTML** document: `(./src/index.html)`:
 ```
 The result: `(./dist/index.html)`:
 ```html
-<!DOCTYPE html>
-<html lang="en">
-
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Document</title>
-</head>
-
 <body>
     <h1>My Gulp</h1>
 
@@ -87,8 +69,6 @@ The result: `(./dist/index.html)`:
         <img src="photo.jpg" alt="">
     </picture>
 </body>
-
-</html>
 ```
 
 > Pay attention! This instrument doesn't compile `_(file name).html` files. (It doesn't create folder `./dist/parts` with **HTML** files). These files are parts of the other files!
